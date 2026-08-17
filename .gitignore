@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+.jazz-mcp/
+*.log
+.DS_Store

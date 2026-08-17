@@ -1,0 +1,360 @@
+.layout {
+  height: 100%;
+  min-height: 0;
+}
+
+.sidebarPanel,
+.contentPanel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.contentPanel {
+  overflow: hidden;
+}
+
+.sidebar {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0d131b;
+  overflow: hidden;
+}
+
+.resizeHandle {
+  position: relative;
+  width: 1px;
+  flex: 0 0 1px;
+  cursor: col-resize;
+  background: transparent;
+  outline: none;
+}
+
+.resizeHandle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--jz-border-strong);
+  transition: background 140ms ease;
+}
+
+.resizeHandle:hover::after,
+.resizeHandle:focus-visible::after,
+.resizeHandle[data-resize-handle-state="drag"]::after {
+  background: var(--jz-accent);
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 12px 8px;
+}
+
+.sidebarTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8796aa;
+}
+
+.sidebarMeta {
+  margin: 3px 0 0;
+  color: #58677a;
+  font-size: 10px;
+}
+
+.searchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 10px 10px;
+  min-height: 31px;
+  border: 1px solid #263244;
+  border-radius: 6px;
+  background: #111925;
+  color: #64748b;
+}
+
+.searchBox:focus-within {
+  border-color: #3a6171;
+  box-shadow: 0 0 0 1px rgba(83, 179, 190, 0.12);
+}
+
+.searchIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  flex: 0 0 30px;
+  color: #67768a;
+}
+
+.searchInput {
+  width: 100%;
+  min-width: 0;
+  height: 29px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #d5deea;
+  padding: 0 24px 0 0;
+  font: inherit;
+  font-size: 11px;
+}
+
+.searchInput::placeholder {
+  color: #536175;
+}
+
+.clearSearchButton {
+  position: absolute;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #6d7b8e;
+  padding: 0;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.clearSearchButton:hover {
+  background: #1c2634;
+  color: #cbd5e3;
+}
+
+.objectSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 6px;
+  color: #59687b;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tableList {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 7px 10px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tableListItem {
+  min-width: 0;
+}
+
+.tableRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.tableRow:hover {
+  background: #141d29;
+  border-color: #1f2c3c;
+}
+
+.tableRowActive {
+  background: #172332;
+  border-color: #263a50;
+}
+
+.tableLink {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+  color: #9aa8bb;
+  text-decoration: none;
+  padding: 0 4px 0 8px;
+  font-size: 11px;
+}
+
+.tableRow:hover .tableLink,
+.tableRowActive .tableLink {
+  color: #e1e9f4;
+}
+
+.tableIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  color: #627991;
+}
+
+.tableRowActive .tableIcon {
+  color: #75b9c4;
+}
+
+.tableName {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.columnCount {
+  min-width: 18px;
+  flex: 0 0 auto;
+  color: #59697d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 9px;
+  text-align: right;
+}
+
+.schemaLink {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  color: #53647a;
+  text-decoration: none;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.tableRow:hover .schemaLink,
+.tableRowActive .schemaLink,
+.schemaLink:focus-visible,
+.schemaLinkActive {
+  opacity: 1;
+}
+
+.schemaLink:hover,
+.schemaLinkActive {
+  background: #202e3e;
+  color: #aac2d8;
+}
+
+.schemaLink:focus-visible {
+  outline: 2px solid var(--jz-focus);
+  outline-offset: -1px;
+}
+
+.noMatches {
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 20px 12px;
+  color: #58677a;
+  font-size: 11px;
+  text-align: center;
+}
+
+.noMatches strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #8695a9;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarFooter {
+  min-height: 35px;
+  flex: 0 0 35px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid #1f2a39;
+  padding: 0 11px;
+  color: #6f7e91;
+  font-size: 10px;
+}
+
+.realtimeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #55d3aa;
+  box-shadow: 0 0 0 3px rgba(85, 211, 170, 0.09);
+}
+
+.realtimeState {
+  margin-left: auto;
+  color: #4e9b82;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.content {
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 6px;
+  background: var(--jz-bg);
+}
+
+.emptyState {
+  border: 1px dashed #2a313d;
+  border-radius: 0;
+  height: 100%;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: var(--jz-bg);
+}
+
+.emptyTitle {
+  margin: 0;
+  color: #dbe3ee;
+  font-size: 18px;
+}
+
+.emptyText {
+  margin: 8px 0 0;
+  color: #8e9db3;
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tableRow,
+  .schemaLink {
+    transition: none;
+  }
+}

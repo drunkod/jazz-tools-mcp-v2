@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.12.0'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+
+  inspector:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: packages/inspector
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.12.0'
+      - name: Install pnpm
+        run: npm install --global pnpm@10
+        working-directory: .
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - name: Verify standalone deployment build
+        run: pnpm build:vercel && test -f dist/index.html
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run Inspector browser E2E
+        run: pnpm test:browser
+      - name: Dump Playwright failure context
+        if: failure()
+        run: |
+          find test-results -type f -name error-context.md -print -exec sh -c 'echo "---"; cat "$1"' _ {} \;
+      - name: Upload Playwright failure context
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspector-playwright-failure-context
+          path: packages/inspector/test-results
+          if-no-files-found: ignore
