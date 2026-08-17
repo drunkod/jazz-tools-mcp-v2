@@ -1,6 +1,8 @@
 # Task 05 — Production security boundary
 
 Priority: P0 before internet-exposed production use
+Status: fail-closed production artifact and contract complete; trusted BFF runtime not implemented; functional production acceptance unmet
+Contract: [`../security-boundary.md`](../security-boundary.md)
 
 ## Goal
 
@@ -9,27 +11,37 @@ Replace browser possession of privileged Jazz admin credentials with a trusted s
 ## Subtasks
 
 ### T05.1 Threat model
-- [ ] List admin secret, app ID, schema/data, mutation capability as assets.
-- [ ] Define developer/operator/end-user/compromised-session actors.
-- [ ] Document that admin access bypasses normal permission policies.
-- [ ] Define dev/staging/prod isolation.
+- [x] List admin/backend secrets, app ID/schema metadata, schema/data, mutation capability, sessions, and audit records as assets.
+- [x] Define developer/operator/production approver/end-user/compromised-session/browser/BFF actors.
+- [x] Document that admin/backend access may bypass normal end-user permission policies.
+- [x] Define dev/staging/prod app, secret, service identity, connection registry, and session/elevation isolation.
 
 ### T05.2 BFF/session boundary
-- [ ] Browser authenticates with operator session.
-- [ ] Trusted backend authorizes admin action.
-- [ ] Admin credential remains server-side.
-- [ ] Backend constructs privileged Jazz client.
-- [ ] Browser never receives raw admin secret.
+- [x] Specify a concrete same-origin session, CSRF, connection-registry, query, mutation, elevation, and error API contract.
+- [ ] Browser authenticates with operator session in an implemented BFF.
+- [ ] Trusted backend authorizes every environment/table/action in runtime code.
+- [ ] Admin/backend credential remains in server-side secret storage.
+- [ ] Backend constructs or leases the privileged Jazz client from an allowlisted connection.
+- [x] Deployable production browser artifact is proven to exclude direct Jazz modules, remove legacy secret state, and make no privileged network requests.
+
+The deployable/Vercel artifact fails closed and contains no functional Inspector until a trusted BFF exists. The unchecked items are implementation/verification work, not documentation ambiguity. The separate `dev`/`build:direct` admin-secret flow is development/operator tooling and is not accepted for internet-exposed production use.
 
 ### T05.3 Auditability
-- [ ] Log operator identity and target environment/table/row identifiers.
-- [ ] Do not log full secrets or sensitive row payloads by default.
-- [ ] Define retention/access policy server-side.
+- [x] Define a versioned server-side audit event with operator, request, environment/app/schema/table/row identifiers, action, decision, outcome, reason, elevation, counts, and duration.
+- [x] Prohibit logging credentials, session/CSRF/IdP tokens, mutation payloads, query results, and sensitive values by default.
+- [ ] Implement append-only audit emission and failure-path coverage.
+- [ ] Approve and configure deployment-specific retention, audit-reader access, row-ID/IP classification, legal hold, and monitoring policy.
 
 ### T05.4 Least privilege
-- [ ] Separate read-only inspection from mutation capability where architecture permits.
-- [ ] Require elevated confirmation for production mutation sessions.
+- [x] Contract separates `schema:read`, `data:read`, and `data:mutate` capabilities.
+- [x] Contract requires a short-lived operator/session/connection-bound elevation for production mutation.
+- [ ] Implement deny-by-default capability checks and prove read-only operators cannot mutate.
+- [ ] Integrate the approved identity-provider re-authentication/elevation mechanism.
 
 ## Acceptance
 
-No production-facing browser bundle stores, receives, or reconstructs the raw Jazz `adminSecret`.
+No production-facing browser bundle stores, receives, or reconstructs a raw Jazz `adminSecret` or `backendSecret`.
+
+**Current functional result: not accepted.** No trusted Admin Inspector BFF exists in this repository. The production artifact is safely unavailable and excludes the direct Jazz graph; only explicit local/operator direct mode accepts/stores `adminSecret`. Production Admin Inspector functionality remains disabled until the runtime acceptance gate in [`../security-boundary.md`](../security-boundary.md) is implemented and evidenced.
+
+Only identity provider/role mapping, session/elevation lifetimes, audit retention/classification, deployment topology, and mutation atomicity/idempotency/limit choices are policy-dependent. The BFF implementation is pending rather than broadly “blocked”; policy-independent server-only secret handling, validation, redaction, audit hooks, and fail-closed tests can proceed.

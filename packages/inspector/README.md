@@ -7,7 +7,7 @@ Primary UX reference for the MVP: **WhoDB** — especially searchable database-o
 See the full implementation plan:
 
 ```text
-../../docs/admin-inspector-mvp-plan.md
+../../docs/admin-inspector/README.md
 ```
 
 ## What already works
@@ -62,11 +62,11 @@ First-time configuration:
 
 The Inspector derives app-scoped endpoints automatically from `serverUrl` and `appId`, so there is no separate path-prefix setting.
 
-> The standalone admin-secret flow is privileged developer/operator access. Do not treat browser-stored admin credentials as the final architecture for an internet-exposed production admin product. The production hardening plan is documented in `docs/admin-inspector-mvp-plan.md`.
+> The standalone admin-secret flow is privileged developer/operator access. It does not meet production acceptance for an internet-exposed admin product. The required trusted BFF/session boundary and current unmet gate are documented in [`../../docs/admin-inspector/security-boundary.md`](../../docs/admin-inspector/security-boundary.md).
 
 ## Realtime MCP demo
 
-A useful end-to-end demo is to leave a table open in this UI and mutate the same Jazz database with the root MCP connector.
+A useful end-to-end demo is to leave a table open in this UI and mutate the same Jazz database with the root MCP connector. The commands below are a quick start; the canonical runbook with exact registered tool names, returned-ID handling, provenance checks, and forward/reverse no-refresh acceptance is [`../../docs/admin-inspector/snippets/mcp-realtime-demo.md`](../../docs/admin-inspector/snippets/mcp-realtime-demo.md).
 
 Terminal 1:
 
@@ -107,7 +107,7 @@ pnpm install --frozen-lockfile
 pnpm test
 ```
 
-Build both standalone and embedded variants:
+Build the trusted direct, embedded, and fail-closed production variants:
 
 ```sh
 pnpm build
@@ -122,26 +122,43 @@ pnpm test:browser
 
 ## Building the Inspector
 
-The package provides standalone web and embedded builds.
+The package intentionally separates privileged direct tooling from the deployable production artifact.
 
-Standalone web app:
+Trusted direct standalone app for local/operator use:
 
 ```sh
 cd packages/inspector
-pnpm build:web
+pnpm build:direct
+# output: dist-direct/index.html
 ```
 
-Embedded inspector:
+Embedded development Inspector:
 
 ```sh
-cd packages/inspector
 pnpm build:embedded
+# output: dist-embedded/embedded.html
 ```
 
-Full build:
+Fail-closed deployable/Vercel artifact:
+
+```sh
+pnpm build:production
+pnpm test:production-build
+# output: dist/index.html
+```
+
+Until the authenticated BFF is implemented, the production artifact only displays an unavailable message. Its build graph rejects `App.tsx`, `jazz-tools`, and `jazz-wasm`, clears legacy direct-connection state, and exposes no admin-secret flow.
+
+Full typecheck and all three builds:
 
 ```sh
 pnpm build
+```
+
+Production browser security gate:
+
+```sh
+pnpm test:browser:production
 ```
 
 The Jazz Vite and SvelteKit development integrations can serve the embedded Inspector as an in-app overlay. Product-oriented shell changes should continue to preserve embedded mode unless a change is explicitly scoped to standalone mode.

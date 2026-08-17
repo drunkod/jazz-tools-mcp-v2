@@ -35,13 +35,19 @@ jobs:
         working-directory: .
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - run: pnpm build
-      - name: Verify standalone deployment build
-        run: pnpm build:vercel && test -f dist/index.html
+      - run: pnpm typecheck
+      - name: Build trusted direct Inspector
+        run: pnpm build:direct && test -f dist-direct/index.html
+      - name: Build embedded Inspector
+        run: pnpm build:embedded && test -f dist-embedded/embedded.html
+      - name: Build and verify fail-closed production Inspector
+        run: pnpm build:production && pnpm test:production-build && test -f dist/index.html
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
-      - name: Run Inspector browser E2E
+      - name: Run direct and embedded Inspector browser E2E
         run: pnpm test:browser
+      - name: Run fail-closed production Inspector browser E2E
+        run: pnpm test:browser:production
       - name: Dump Playwright failure context
         if: failure()
         run: |
