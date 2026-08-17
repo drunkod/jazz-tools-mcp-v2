@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link, Navigate, useParams } from "react-router";
 import type { WasmSchema } from "jazz-tools";
 import { useDevtoolsContext } from "../../contexts/devtools-context.js";
+import { tableViewPath } from "../../utility/data-explorer-routes.js";
 import styles from "./TableSchemaSql.module.css";
 
 export function TableSchemaDefinition() {
@@ -45,7 +46,7 @@ export function TableSchemaDefinition() {
     <section className={styles.container}>
       <header className={styles.header}>
         <Link
-          to={`/data-explorer/${table}/data`}
+          to={tableViewPath(table, "data")}
           className={styles.backLink}
           aria-label="Back to data"
         >

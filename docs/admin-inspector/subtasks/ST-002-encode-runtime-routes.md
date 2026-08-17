@@ -2,7 +2,7 @@
 
 Parent: Task 00
 Priority: P1
-Status: partially implemented; grid toolbar follow-up remains
+Status: complete
 
 ## Problem
 
@@ -26,23 +26,17 @@ export function tableViewPath(tableName: string, view: TableView): string {
 const base = tableViewPath(table, "data");
 ```
 
-Regression tests cover `/`, space, `#`, `?`, `%`, and ordinary table names.
+Regression tests cover `/`, space, `#`, `?`, `%`, and ordinary table names. Component regressions use the combined runtime name `todos/archived #1` for sidebar, schema-back, relation, and grid-toolbar paths. Browser coverage opens the deployed runtime table `reports/ready ?#%` through its encoded route.
 
-Sidebar data/schema links, relation navigation, and the stale-table redirect were already encoded before this subtask.
+Sidebar data/schema links, relation navigation, the schema back-to-data link, and the stale-table redirect now all call the shared helper rather than duplicating path interpolation or encoding.
 
-## Remaining raw producer
+## Grid toolbar producer
 
-### Data grid toolbar Schema link
+The final raw producer now uses the shared helper:
 
 ```tsx
-// current
-<Link to={`/data-explorer/${table}/schema`} aria-label="Schema">
-
-// required
 <Link to={tableViewPath(table, "schema")} aria-label="Schema">
 ```
-
-This file is large and also contains the separate alpha/current `useAll()` compatibility cleanup. Keep the remaining grid change in one focused full-file patch with ST-003 so the compatibility and route imports/tests can be reviewed together.
 
 ## Regression case
 
@@ -67,12 +61,15 @@ Filter/query values stay in `URLSearchParams`, not the path.
 - [x] patch Live Query `buildExplorerUrl()`;
 - [x] add helper unit coverage for route-significant characters;
 - [x] keep relation IDs/filter JSON in `URLSearchParams`;
-- [ ] patch the grid toolbar Schema link;
-- [ ] use the shared helper in that grid link;
-- [ ] add a component regression for the Schema toolbar href;
-- [ ] re-search every `data-explorer/${...}` producer after the grid patch;
-- [ ] add browser coverage if the dynamic test schema can expose such a table safely.
+- [x] use `tableViewPath()` in every non-grid runtime route producer;
+- [x] add component regressions for the sidebar, schema-back, and relation producers;
+- [x] re-audit all route producers;
+- [x] patch the grid toolbar Schema link;
+- [x] use the shared helper in that grid link;
+- [x] add a component regression for the Schema toolbar href;
+- [x] re-search every `data-explorer/${...}` producer after the grid patch;
+- [x] add browser coverage with a route-significant runtime table name.
 
 ## Acceptance
 
-Complete when no runtime table string can accidentally create a new path segment, query string, fragment, or malformed navigation target. The Live Query path is fixed; the grid toolbar path remains explicit follow-up work.
+Complete: runtime table path construction is centralized, component regressions cover every producer, and browser E2E verifies an encoded route-significant runtime table.

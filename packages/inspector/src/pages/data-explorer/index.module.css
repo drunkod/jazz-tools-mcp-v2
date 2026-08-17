@@ -310,22 +310,63 @@
   box-shadow: 0 0 0 3px rgba(85, 211, 170, 0.09);
 }
 
-.realtimeState {
+.realtimeLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copyViewButton {
+  min-width: 0;
+  min-height: 25px;
   margin-left: auto;
-  color: #4e9b82;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 9px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #7f91a8;
+  padding: 0 5px;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.copyViewButton:hover {
+  border-color: #26364a;
+  background: #16202d;
+  color: #c4d0df;
+}
+
+.copyViewButton:focus-visible {
+  outline: 2px solid var(--jz-focus);
+  outline-offset: -1px;
+}
+
+.copyViewButton svg {
+  flex: 0 0 auto;
 }
 
 .content {
   height: 100%;
   min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   padding-top: 6px;
   background: var(--jz-bg);
+}
+
+
+.routeContent {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .emptyState {
@@ -350,6 +391,42 @@
   margin: 8px 0 0;
   color: #8e9db3;
   font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .sidebarPanel {
+    min-width: min(42vw, 180px);
+  }
+
+  .sidebarHeader {
+    padding: 10px 9px 7px;
+  }
+
+  .sidebarMeta {
+    display: none;
+  }
+
+  .searchBox {
+    margin-inline: 7px;
+  }
+
+  .tableList {
+    padding-inline: 5px;
+  }
+
+  .sidebarFooter {
+    padding-inline: 7px;
+  }
+
+  .realtimeLabel,
+  .realtimeDot {
+    display: none;
+  }
+
+  .copyViewButton {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

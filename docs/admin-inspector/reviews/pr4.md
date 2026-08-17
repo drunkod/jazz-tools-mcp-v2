@@ -6,7 +6,7 @@ PR: `#4 feat: add Jazz Admin Inspector plan and WhoDB-inspired shell`
 
 The core architecture is correct: retain runtime schema discovery, generic Jazz queries, reactive reads, and Jazz mutations. WhoDB should influence navigation density, CRUD discoverability, destructive-action UX, schema access, and test organization—not the backend data layer.
 
-The P0 embedded runtime/CI blocker is resolved. One of the two raw runtime-route producers discovered afterward (Live Query) is now fixed through a shared encoded path helper and regression tests. The remaining grid toolbar route plus the alpha/current `useAll()` compatibility consolidation remain explicit P1 work.
+The P0 embedded runtime/CI blocker was resolved in PR #4. The continuation branch completes all tracked P1 runtime-route and alpha/current `useAll()` compatibility work, adds admin-safety/navigation/realtime regressions, and introduces a fail-closed deployable artifact so direct browser credentials remain limited to explicit local/operator builds.
 
 The implementation head `705e38ebb229dd1b06f9d4d521932490e0bfe341` passed final-head CI run #78.
 
@@ -94,7 +94,7 @@ Commit: `705e38ebb229dd1b06f9d4d521932490e0bfe341`
 5. Test asserting a non-contract overlay `wasmUrl` field.
 6. Browser fixture enabling DevTools telemetry after its first query subscription had already registered.
 
-## P1 route finding — partially implemented
+## P1 route finding — completed on the continuation branch
 
 The review found two raw runtime table path producers after the earlier sidebar/relation fixes.
 
@@ -122,17 +122,13 @@ export function tableViewPath(tableName: string, view: "data" | "schema"): strin
 
 Unit coverage includes slash, hash, query, percent, whitespace, and ordinary table names.
 
-### Remaining: `TableDataGrid` toolbar Schema link
+### Fixed: `TableDataGrid` toolbar Schema link
 
-```tsx
-to={`/data-explorer/${table}/schema`}
-```
+The toolbar, sidebar, relation, schema-back, stale-table, and Live Query producers now call `tableViewPath()`. Component regressions cover the combined name `todos/archived #1`, and browser E2E opens `reports/ready ?#%` through the encoded route. See ST-002.
 
-It should use `tableViewPath(table, "schema")` and get a component-level href regression. See ST-002.
+## Completed P1 — centralized `useAll()` compatibility
 
-## Remaining P1 — `useAll()` compatibility logic is duplicated
-
-The extracted fork supports the published alpha's legacy array/undefined result shape while tolerating current Jazz's structured `{ data, isLoading, error }` state. Main-grid and relation-cell branching should move into one tested `normalizeUseAllResult()` utility. See ST-003 and `snippets/use-all-normalizer.md`.
+The extracted fork supports the published alpha's legacy array/undefined result shape while tolerating current Jazz's structured `{ data,isLoading,error }` state through one tested `normalizeUseAllResult()` utility. Main-grid and relation-cell queries now consume the same normalized shape; structured errors remain visible without clearing cached rows, empty legacy data uses a stable reference, and impossible shapes produce actionable diagnostics. See ST-003 and `snippets/use-all-normalizer.md`.
 
 ## Upstream Jazz double-check
 

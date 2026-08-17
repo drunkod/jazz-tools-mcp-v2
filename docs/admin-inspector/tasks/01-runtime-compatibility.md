@@ -2,6 +2,7 @@
 
 Priority: P1
 Dependency: Task 00
+Status: complete
 
 ## Goal
 
@@ -10,27 +11,27 @@ Keep the extracted Inspector compatible with the pinned published Jazz alpha whi
 ## Subtasks
 
 ### T01.1 Query result adapter
-- [ ] Normalize legacy `T[]`, legacy `undefined`, and current `{data,isLoading,error}`.
-- [ ] Do not treat empty data as loading.
-- [ ] Preserve query error state.
-- [ ] Unit-test impossible primitive shapes.
+- [x] Normalize legacy `T[]`, legacy `undefined`, and current `{data,isLoading,error}`.
+- [x] Do not treat empty data as loading.
+- [x] Preserve query error state.
+- [x] Unit-test impossible primitive shapes.
 
 ### T01.2 Centralize version-specific assumptions
-- [ ] Search for casts against Jazz hook return values.
-- [ ] Move compatibility logic into utilities.
-- [ ] Add comments naming the package/version reason.
-- [ ] Define the condition for deleting each shim.
+- [x] Search for casts against Jazz hook return values.
+- [x] Move compatibility logic into utilities.
+- [x] Add comments naming the package/version reason.
+- [x] Define the condition for deleting each shim.
 
 ### T01.3 Query error UI
-- [ ] Expose structured query error without clearing useful cached rows unnecessarily.
-- [ ] Add accessible error region near the grid.
-- [ ] Cover initial failure and post-data failure.
+- [x] Expose structured query error without clearing useful cached rows unnecessarily.
+- [x] Add accessible error region near the grid.
+- [x] Cover initial failure and post-data failure.
 
 ### T01.4 Propagation/durability
-- [ ] Standalone reads remain `full`.
-- [ ] Embedded reads remain `local-only`.
-- [ ] Standalone writes retain required edge/server durability.
-- [ ] Embedded writes remain valid for local development.
+- [x] Standalone reads remain `full`.
+- [x] Embedded reads remain `local-only`.
+- [x] Standalone writes retain required edge/server durability.
+- [x] Embedded writes remain valid for local development.
 
 ## Acceptance
 

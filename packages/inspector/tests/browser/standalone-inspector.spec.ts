@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createJazzContext } from "jazz-tools/backend";
-import { app, permissions } from "./schema.js";
+import { app, permissions, SPECIAL_CHARACTER_TABLE } from "./schema.js";
 import { ADMIN_SECRET, APP_ID, TEST_BRANCH, TEST_ENV, TEST_PORT } from "./test-constants.js";
 
 const SERVER_URL = `http://127.0.0.1:${TEST_PORT}`;
@@ -139,6 +139,19 @@ test.describe("data explorer page", () => {
   test("loads data explorer from stored config", async ({ page }) => {
     await page.getByRole("link", { name: "View todos data" }).click();
     await expect(page.getByText("First seeded todo")).toBeVisible();
+  });
+
+  test("opens a runtime table with route-significant characters", async ({ page }) => {
+    const tableLink = page.getByRole("link", {
+      name: `View ${SPECIAL_CHARACTER_TABLE} data`,
+    });
+    await expect(tableLink).toBeVisible();
+    await tableLink.click();
+
+    await expect
+      .poll(() => new URL(page.url()).pathname)
+      .toBe(`/data-explorer/${encodeURIComponent(SPECIAL_CHARACTER_TABLE)}/data`);
+    await expect(page.getByRole("columnheader", { name: "title" })).toBeVisible();
   });
 
   test("loads schema explorer", async ({ page }) => {
@@ -290,8 +303,20 @@ test.describe("data explorer page", () => {
       await expect(externalRow).toBeVisible({ timeout: 15_000 });
       await expect(externalRow.getByRole("checkbox")).not.toBeChecked();
 
+      const columnHeaders = await page.getByRole("columnheader").allTextContents();
+      const updatedAtColumnIndex = columnHeaders.indexOf("$updatedAt");
+      expect(updatedAtColumnIndex).toBeGreaterThanOrEqual(0);
+      const updatedAtCell = externalRow.getByRole("gridcell").nth(updatedAtColumnIndex);
+      await expect(updatedAtCell).toHaveText(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      const insertedUpdatedAt = await updatedAtCell.textContent();
+      expect(insertedUpdatedAt).not.toBeNull();
+
+      await page.waitForTimeout(10);
       await externalWriter.update(app.todos, createdRow.id, { done: true }).wait({ tier: "global" });
+
       await expect(externalRow.getByRole("checkbox")).toBeChecked({ timeout: 15_000 });
+      await expect(updatedAtCell).not.toHaveText(insertedUpdatedAt!, { timeout: 15_000 });
+      await expect(updatedAtCell).toHaveText(/^\d{4}-\d{2}-\d{2}T.*Z$/);
 
       await externalWriter.delete(app.todos, createdRow.id).wait({ tier: "global" });
       await expect(externalRow).toHaveCount(0, { timeout: 15_000 });

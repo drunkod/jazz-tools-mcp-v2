@@ -59,6 +59,31 @@ describe("TableSchemaDefinition", () => {
     expect(screen.getByText(/"select"/)).not.toBeNull();
   });
 
+  it("encodes route-significant characters in the back-to-data link", () => {
+    const table = "todos/archived #1";
+    mockUseDevtoolsContext.mockReturnValue({
+      runtime: "extension",
+      wasmSchema: {
+        [table]: {
+          columns: [{ name: "id", column_type: { type: "Uuid" }, nullable: false }],
+        },
+      },
+      storedPermissions: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/data-explorer/todos%2Farchived%20%231/schema"]}>
+        <Routes>
+          <Route path="/data-explorer/:table/schema" element={<TableSchemaDefinition />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "Back to data" }).getAttribute("href")).toBe(
+      "/data-explorer/todos%2Farchived%20%231/data",
+    );
+  });
+
   it("shows an empty state when no permissions head has been published", () => {
     mockUseDevtoolsContext.mockReturnValue({
       runtime: "standalone",

@@ -10,8 +10,11 @@ const mockDelete = vi.fn();
 const mockUpdateWait = vi.fn();
 const mockInsertWait = vi.fn();
 const mockDeleteWait = vi.fn();
+const mockWriteText = vi.fn();
 let currentRows: Array<Record<string, unknown>>;
 let currentReferenceRowsByTable: Record<string, Array<Record<string, unknown>>>;
+let currentRuntime: "overlay" | "standalone";
+let currentTable: string;
 
 function getContainingCell(element: HTMLElement | null): HTMLElement | null {
   return element?.closest('[role="gridcell"], td') ?? null;
@@ -33,6 +36,16 @@ function getCellsInRow(element: HTMLElement): HTMLElement[] {
   return within(row as HTMLElement).getAllByRole("gridcell");
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 function getLastTodosQuery(): { _build: () => string } {
   return [...mockUseAll.mock.calls]
     .reverse()
@@ -45,7 +58,7 @@ function getLastTodosQuery(): { _build: () => string } {
 
 function renderGridUi() {
   return (
-    <MemoryRouter initialEntries={["/data-explorer/todos/data"]}>
+    <MemoryRouter initialEntries={[`/data-explorer/${encodeURIComponent(currentTable)}/data`]}>
       <TableDataGrid />
     </MemoryRouter>
   );
@@ -70,6 +83,7 @@ const mockWasmSchema = {
         nullable: false,
         default: { type: "Text", value: "open" },
       },
+      { name: "big_count", column_type: { type: "BigInt" }, nullable: true },
     ],
   },
   users: {
@@ -77,6 +91,9 @@ const mockWasmSchema = {
       { name: "displayName", column_type: { type: "Text" }, nullable: false },
       { name: "email", column_type: { type: "Text" }, nullable: false },
     ],
+  },
+  "todos/archived #1": {
+    columns: [{ name: "title", column_type: { type: "Text" }, nullable: false }],
   },
 };
 
@@ -92,7 +109,7 @@ vi.mock("jazz-tools/react", () => ({
 vi.mock("../../contexts/devtools-context.js", () => ({
   useDevtoolsContext: () => ({
     wasmSchema: mockWasmSchema,
-    runtime: "overlay",
+    runtime: currentRuntime,
   }),
 }));
 
@@ -100,7 +117,7 @@ vi.mock("react-router", async () => {
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
   return {
     ...actual,
-    useParams: () => ({ table: "todos" }),
+    useParams: () => ({ table: currentTable }),
   };
 });
 
@@ -112,6 +129,14 @@ describe("TableDataGrid", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    currentRuntime = "overlay";
+    currentTable = "todos";
+    mockWriteText.mockReset();
+    mockWriteText.mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: (...args: unknown[]) => mockWriteText(...args) },
+    });
     currentRows = [
       {
         id: "row-2",
@@ -121,6 +146,7 @@ describe("TableDataGrid", () => {
         meta: { done: true },
         owner_id: "owner-a",
         blob: new Uint8Array([1, 2]),
+        big_count: BigInt("9007199254740993"),
         status: "open",
         $createdAt: new Date("2026-07-17T08:00:00.000Z"),
         $createdBy: "seed-user",
@@ -135,6 +161,7 @@ describe("TableDataGrid", () => {
         meta: null,
         owner_id: "owner-b",
         blob: new Uint8Array([5, 6]),
+        big_count: BigInt("42"),
         status: "closed",
         $createdAt: new Date("2026-07-16T08:00:00.000Z"),
         $createdBy: "import-user",
@@ -234,7 +261,40 @@ describe("TableDataGrid", () => {
     expect((screen.getByLabelText("Rows per page") as HTMLSelectElement).value).toBe("25");
   });
 
-  it("can show creator and updater columns", () => {
+  it("shows an accessible initial query error instead of a loading skeleton", () => {
+    mockUseAll.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error("database unavailable"),
+    });
+
+    renderGrid();
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Could not load rows: database unavailable",
+    );
+    expect(screen.queryByText("Loading…")).toBeNull();
+    expect(screen.getByText("No rows")).not.toBeNull();
+  });
+
+  it("retains cached rows when a structured query result reports an error", () => {
+    const { rerender } = renderGrid();
+    expect(screen.getByText("zeta")).not.toBeNull();
+
+    mockUseAll.mockReturnValue({
+      data: currentRows,
+      isLoading: false,
+      error: new Error("refresh failed"),
+    });
+    rerender(renderGridUi());
+
+    expect(screen.getByText("zeta")).not.toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Could not load rows: refresh failed Cached rows are shown.",
+    );
+  });
+
+  it("can show and copy exact creator and updater writer IDs", async () => {
     renderGrid();
 
     fireEvent.click(screen.getByRole("button", { name: "Customize columns" }));
@@ -261,6 +321,13 @@ describe("TableDataGrid", () => {
     ]);
     expect(screen.getByText("seed-user")).not.toBeNull();
     expect(screen.getByText("editor-user")).not.toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copy $updatedBy writer ID editor-user" }),
+    );
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledWith("editor-user");
+    });
   });
 
   it("can hide and show a column", () => {
@@ -356,6 +423,85 @@ describe("TableDataGrid", () => {
         value: "owner-a",
       },
     ]);
+
+    fireEvent.click(relationLink);
+    const backButton = screen.getByRole("button", { name: "Back to todos" });
+    fireEvent.click(backButton);
+    expect(screen.queryByRole("button", { name: "Back to todos" })).toBeNull();
+  });
+
+  it("encodes route-significant characters in the Schema toolbar link", () => {
+    currentTable = "todos/archived #1";
+    renderGrid();
+
+    expect(screen.getByRole("link", { name: "Schema" }).getAttribute("href")).toBe(
+      "/data-explorer/todos%2Farchived%20%231/schema",
+    );
+  });
+
+  it("exposes keyboard-accessible row and cell copy actions", async () => {
+    renderGrid();
+
+    const copyRowIdButton = screen.getByRole("button", { name: "Copy row ID row-2" });
+    expect(copyRowIdButton.tabIndex).toBe(0);
+    fireEvent.click(copyRowIdButton);
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledWith("row-2");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy visible row JSON row-2" }));
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledTimes(2);
+    });
+    const copiedRow = JSON.parse(String(mockWriteText.mock.calls[1]?.[0])) as Record<string, unknown>;
+    expect(copiedRow).toMatchObject({
+      id: "row-2",
+      title: "zeta",
+      done: false,
+      big_count: "9007199254740993",
+    });
+    expect(copiedRow).not.toHaveProperty("$createdBy");
+    expect(copiedRow).not.toHaveProperty("$updatedBy");
+
+    const titleCell = screen.getByRole("gridcell", { name: "zeta" });
+    const copyCellButton = screen.getByRole("button", { name: "Copy cell" });
+    expect(copyCellButton.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(titleCell);
+    expect(copyCellButton.hasAttribute("disabled")).toBe(false);
+    expect(copyCellButton.tabIndex).toBe(0);
+    fireEvent.click(copyCellButton);
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenLastCalledWith("zeta");
+    });
+  });
+
+  it("falls back to an unfiltered view when the filter query parameter is malformed", () => {
+    render(
+      <MemoryRouter initialEntries={["/data-explorer/todos/data?filters=%7Bnot-json"]}>
+        <TableDataGrid />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("zeta")).not.toBeNull();
+    expect(JSON.parse(getLastTodosQuery()._build())).not.toHaveProperty("where");
+  });
+
+  it.each([
+    JSON.stringify([null]),
+    JSON.stringify([{ id: "bad-column", column: "missing", operator: "eq", value: "x" }]),
+    JSON.stringify([{ id: "bad-operator", column: "title", operator: "between", value: "x" }]),
+    JSON.stringify([{ id: "bad-value", column: "done", operator: "isNull", value: "true" }]),
+  ])("falls back to an unfiltered view for semantically malformed filter arrays: %s", (filters) => {
+    render(
+      <MemoryRouter
+        initialEntries={[`/data-explorer/todos/data?filters=${encodeURIComponent(filters)}`]}
+      >
+        <TableDataGrid />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("zeta")).not.toBeNull();
+    expect(JSON.parse(getLastTodosQuery()._build())).not.toHaveProperty("where");
   });
 
   it("updates query sorting when a sortable column header is clicked", () => {
@@ -392,6 +538,26 @@ describe("TableDataGrid", () => {
     );
   });
 
+  it("uses full reads and edge-durable writes in standalone mode", async () => {
+    currentRuntime = "standalone";
+    renderGrid();
+
+    expect(mockUseAll).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        propagation: "full",
+        visibility: "hidden_from_live_query_list",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete row-2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(mockDeleteWait).toHaveBeenCalledWith({ tier: "edge" });
+    });
+  });
+
   it("adds a where clause and compiles it into query conditions", () => {
     renderGrid();
 
@@ -416,6 +582,8 @@ describe("TableDataGrid", () => {
     fireEvent.click(titleCell);
     expect(getContainingRow(screen.getByText("zeta"))?.className).toContain("rowSelected");
 
+    // Model a browser double-click's second click before the dblclick event.
+    fireEvent.click(titleCell);
     fireEvent.doubleClick(titleCell);
     const titleEditor = screen.getByLabelText("Edit title");
     fireEvent.change(titleEditor, { target: { value: "zeta updated" } });
@@ -433,6 +601,44 @@ describe("TableDataGrid", () => {
         }),
       );
       expect(mockUpdateWait).toHaveBeenCalledWith({ tier: "local" });
+    });
+  });
+
+  it("blocks mutation controls while a save is pending", async () => {
+    const deferredUpdate = createDeferred<void>();
+    mockUpdateWait.mockImplementationOnce(() => deferredUpdate.promise);
+    renderGrid();
+
+    fireEvent.doubleClick(screen.getByRole("gridcell", { name: "zeta" }));
+    const titleEditor = screen.getByLabelText("Edit title");
+    fireEvent.change(titleEditor, { target: { value: "pending update" } });
+    fireEvent.blur(titleEditor);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(mockUpdateWait).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Saving..." })).not.toBeNull();
+    });
+
+    fireEvent.doubleClick(screen.getByRole("gridcell", { name: "alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete row-1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Insert row" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Toggle done for row-1" }));
+
+    expect(screen.queryByLabelText("Edit title")).toBeNull();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(screen.queryByText("1 row will be deleted")).toBeNull();
+    expect(screen.queryByText("staged")).toBeNull();
+    expect((screen.getByRole("checkbox", { name: "Toggle done for row-1" }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+
+    await act(async () => {
+      deferredUpdate.resolve();
+      await deferredUpdate.promise;
+    });
+    await waitFor(() => {
+      expect(screen.queryByText(/queued change across/i)).toBeNull();
     });
   });
 
@@ -711,6 +917,17 @@ describe("TableDataGrid", () => {
     expect(getContainingRow(screen.getByText("row-3"))?.dataset.rowChangeState).toBe(undefined);
   });
 
+  it("resets the animation baseline when sort changes the query scope", () => {
+    renderGrid();
+    currentRows = [...currentRows].reverse();
+
+    fireEvent.click(screen.getByRole("columnheader", { name: "title" }));
+
+    expect(document.querySelector('[data-row-change-state="added"]')).toBeNull();
+    expect(document.querySelector('[data-row-change-state="removed"]')).toBeNull();
+    expect(document.querySelector('[data-cell-change-state="updated"]')).toBeNull();
+  });
+
   it("does not highlight rows when the first result set loads", () => {
     currentRows = [];
     const { rerender } = renderGrid();
@@ -767,6 +984,37 @@ describe("TableDataGrid", () => {
     });
 
     expect(screen.queryByText("row-2")).toBeNull();
+  });
+
+  it("validates every staged insert before any mutation starts and keeps invalid rows editable", async () => {
+    renderGrid();
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert row" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        'Insert row 1, column "title" (Text): Value is required.',
+      );
+    });
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(screen.getByText("staged")).not.toBeNull();
+
+    const stagedCells = getCellsInRowContaining("staged");
+    fireEvent.doubleClick(stagedCells[1] as HTMLElement);
+    const titleEditor = screen.getByLabelText("Edit title");
+    fireEvent.change(titleEditor, { target: { value: "valid after retry" } });
+    fireEvent.blur(titleEditor);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(mockInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ _table: "todos" }),
+        expect.objectContaining({ title: "valid after retry" }),
+      );
+    });
   });
 
   it("appends a staged insert row and inserts it from the banner", async () => {
@@ -915,7 +1163,15 @@ describe("TableDataGrid", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Delete row(s)" }));
 
+    const dialog = screen.getByRole("dialog", { name: "Queue persisted-row deletion?" });
+    expect(within(dialog).getByText(/2 persisted rows will be queued/)).not.toBeNull();
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText("2 rows will be deleted")).toBeNull();
+    expect(mockDelete).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Queue deletion of 2 rows" }));
     expect(screen.getByText("2 rows will be deleted")).not.toBeNull();
+    expect(mockDelete).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -948,6 +1204,39 @@ describe("TableDataGrid", () => {
     expect(defaultWasNotPrevented).toBe(false);
   });
 
+  it("counts only persisted rows in mixed bulk confirmation and cancel changes nothing", () => {
+    renderGrid();
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert row" }));
+    const stagedBadge = screen.getByText("staged");
+    fireEvent.click(screen.getByRole("gridcell", { name: "row-2" }));
+    fireEvent.click(stagedBadge, { shiftKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "Delete row(s)" }));
+
+    let dialog = screen.getByRole("dialog", { name: "Queue persisted-row deletion?" });
+    expect(within(dialog).getByText(/2 persisted rows will be queued/)).not.toBeNull();
+    expect(within(dialog).getByText(/1 unsaved staged row will also be removed/)).not.toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByText("staged")).not.toBeNull();
+    expect(screen.queryByText("2 rows will be deleted")).toBeNull();
+    expect(mockDelete).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete row(s)" }));
+    dialog = screen.getByRole("dialog", { name: "Queue persisted-row deletion?" });
+    fireEvent(dialog, new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog", { name: "Queue persisted-row deletion?" })).toBeNull();
+    expect(screen.getByText("staged")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete row(s)" }));
+    dialog = screen.getByRole("dialog", { name: "Queue persisted-row deletion?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Queue deletion of 2 rows" }));
+
+    expect(screen.queryByText("staged")).toBeNull();
+    expect(screen.getByText("2 rows will be deleted")).not.toBeNull();
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
   it("cancels staged insert rows included in a selected range", () => {
     renderGrid();
 
@@ -968,6 +1257,7 @@ describe("TableDataGrid", () => {
     renderGrid();
 
     fireEvent.click(screen.getByRole("button", { name: "Delete row-2" }));
+    expect(screen.queryByRole("dialog", { name: "Queue persisted-row deletion?" })).toBeNull();
     expect(screen.getByText("1 row will be deleted")).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
@@ -978,6 +1268,124 @@ describe("TableDataGrid", () => {
         "row-2",
       );
       expect(mockDeleteWait).toHaveBeenCalledWith({ tier: "local" });
+    });
+  });
+
+  it("retires successful mixed operations and retries only the failed insert", async () => {
+    mockInsertWait.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("second insert failed"));
+    renderGrid();
+
+    fireEvent.doubleClick(screen.getByRole("gridcell", { name: "zeta" }));
+    const titleEditor = screen.getByLabelText("Edit title");
+    fireEvent.change(titleEditor, { target: { value: "mixed update" } });
+    fireEvent.blur(titleEditor);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete row-1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Insert row" }));
+    fireEvent.click(screen.getByRole("button", { name: "Insert row" }));
+
+    const stagedBadges = screen.getAllByText("staged");
+    for (const [index, stagedBadge] of stagedBadges.entries()) {
+      const stagedCells = getCellsInRow(stagedBadge as HTMLElement);
+      fireEvent.doubleClick(stagedCells[1] as HTMLElement);
+      const editor = screen.getByLabelText("Edit title");
+      fireEvent.change(editor, { target: { value: `mixed insert ${index + 1}` } });
+      fireEvent.blur(editor);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain("second insert failed");
+    });
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockInsert).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText("staged")).toHaveLength(1);
+    expect(screen.queryByText("1 edit across 1 row")).toBeNull();
+    expect(screen.queryByText("1 row will be deleted")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+      expect(mockInsert).toHaveBeenCalledTimes(3);
+      expect(screen.queryByText("staged")).toBeNull();
+    });
+    expect(mockInsert.mock.calls[2]?.[1]).toEqual(
+      expect.objectContaining({ title: "mixed insert 2" }),
+    );
+  });
+
+  it("labels update failures and preserves queued edits for retry", async () => {
+    mockUpdateWait.mockRejectedValueOnce(new Error("update transport failed"));
+    renderGrid();
+
+    const titleCell = screen.getByRole("gridcell", { name: "zeta" });
+    fireEvent.doubleClick(titleCell);
+    const titleEditor = screen.getByLabelText("Edit title");
+    fireEvent.change(titleEditor, { target: { value: "retry update" } });
+    fireEvent.blur(titleEditor);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        'Update failed for row "row-2": update transport failed',
+      );
+    });
+    expect(screen.getByText("1 edit across 1 row")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => {
+      expect(mockUpdateWait).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText("1 edit across 1 row")).toBeNull();
+    });
+  });
+
+  it("labels insert failures and preserves the staged row for retry", async () => {
+    mockInsertWait.mockRejectedValueOnce(new Error("insert transport failed"));
+    renderGrid();
+
+    fireEvent.click(screen.getByRole("button", { name: "Insert row" }));
+    const stagedCells = getCellsInRowContaining("staged");
+    fireEvent.doubleClick(stagedCells[1] as HTMLElement);
+    const titleEditor = screen.getByLabelText("Edit title");
+    fireEvent.change(titleEditor, { target: { value: "retry insert" } });
+    fireEvent.blur(titleEditor);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain("Insert failed for staged row 1");
+      expect(screen.getByRole("alert").textContent).toContain("insert transport failed");
+    });
+    expect(screen.getByText("staged")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => {
+      expect(mockInsertWait).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText("staged")).toBeNull();
+    });
+  });
+
+  it("labels delete failures and preserves the queued deletion for retry", async () => {
+    mockDeleteWait.mockRejectedValueOnce(new Error("delete transport failed"));
+    renderGrid();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete row-2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        'Delete failed for row "row-2": delete transport failed',
+      );
+    });
+    expect(screen.getByText("1 row will be deleted")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => {
+      expect(mockDeleteWait).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText("1 row will be deleted")).toBeNull();
     });
   });
 
