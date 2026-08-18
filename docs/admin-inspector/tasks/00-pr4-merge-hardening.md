@@ -54,7 +54,7 @@ The route-helper implementation and special-character unit coverage were then va
 Continuation branch validation on 2026-08-17:
 
 - root check/build and integration tests: 9/9 passed;
-- Inspector unit suite: 114/114 passed;
+- Inspector unit suite: 121/121 passed;
 - TypeScript: passed;
 - direct, embedded, and fail-closed production builds: passed;
 - production artifact exclusion test: 1/1 passed;
