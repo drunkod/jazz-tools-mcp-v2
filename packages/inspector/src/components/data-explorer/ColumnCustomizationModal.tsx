@@ -25,6 +25,15 @@ export function isColumnPreferences(value: unknown): value is ColumnPreference[]
   return Array.isArray(value) && value.every(isColumnPreference);
 }
 
+export function getSchemaDefaultColumnPreferences(
+  columns: readonly CustomizableColumn[],
+): ColumnPreference[] {
+  return columns.map((column) => ({
+    id: column.id,
+    visible: !column.hiddenByDefault,
+  }));
+}
+
 export function reconcileColumnPreferences(
   columns: readonly CustomizableColumn[],
   storedPreferences: readonly ColumnPreference[] | undefined,
@@ -42,9 +51,9 @@ export function reconcileColumnPreferences(
     preferences.push(preference);
   }
 
-  for (const column of columns) {
-    if (!seenColumnIds.has(column.id)) {
-      preferences.push({ id: column.id, visible: !column.hiddenByDefault });
+  for (const preference of getSchemaDefaultColumnPreferences(columns)) {
+    if (!seenColumnIds.has(preference.id)) {
+      preferences.push(preference);
     }
   }
 
@@ -278,12 +287,7 @@ export function ColumnCustomizationModal({
             type="button"
             className={styles.resetButton}
             onClick={() => {
-              setDraftPreferences(
-                columns.map((column) => ({
-                  id: column.id,
-                  visible: !column.hiddenByDefault,
-                })),
-              );
+              setDraftPreferences(getSchemaDefaultColumnPreferences(columns));
             }}
           >
             Reset

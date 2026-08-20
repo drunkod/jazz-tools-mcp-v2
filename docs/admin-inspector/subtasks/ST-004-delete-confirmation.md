@@ -2,7 +2,7 @@
 
 Parent: Task 02
 Priority: P1
-Status: proposed
+Status: complete
 
 ## Behavior
 
@@ -28,9 +28,9 @@ Rules:
 
 ## Tests
 
-- [ ] 1 persisted row queues without dialog;
-- [ ] 2 persisted rows require confirmation;
-- [ ] cancel is no-op;
-- [ ] confirm queues exact IDs;
-- [ ] mixed staged + persisted selection removes staged rows but counts only persisted rows for warning;
-- [ ] Save is still required for persistence.
+- [x] 1 persisted row queues without dialog;
+- [x] 2 persisted rows require confirmation;
+- [x] cancel is no-op;
+- [x] confirm queues exact IDs;
+- [x] mixed staged + persisted selection removes staged rows but counts only persisted rows for warning;
+- [x] Save is still required for persistence.

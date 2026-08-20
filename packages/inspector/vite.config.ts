@@ -29,6 +29,8 @@ const jazzToolsPackageRoot = dirname(require.resolve("jazz-tools/package.json"))
 const jazzToolsRequire = createRequire(resolve(jazzToolsPackageRoot, "package.json"));
 const jazzWasmEntry = jazzToolsRequire.resolve("jazz-wasm");
 const jazzViteAliases = jazzRuntimeConfig.resolve?.alias ?? [];
+const directStandaloneAppPath = resolve(__dirname, "src", "App.tsx");
+const productionStandaloneAppPath = resolve(__dirname, "src", "ProductionApp.tsx");
 
 /**
  * The published package intentionally ships the dedicated worker as normal
@@ -95,6 +97,35 @@ function createWasmPlugins() {
   return [wasm()];
 }
 
+/**
+ * Guard the public artifact at build time, not with a runtime feature flag.
+ * If the direct app or a privileged Jazz browser dependency enters Rollup's
+ * production module graph, fail the build before an artifact can be deployed.
+ */
+function failClosedProductionBuildPlugin(): Plugin {
+  return {
+    name: "fail-closed-production-inspector",
+    generateBundle() {
+      const forbiddenModules = [...this.getModuleIds()].filter((moduleId) => {
+        const normalizedId = moduleId.split("?", 1)[0]?.replaceAll("\\", "/") ?? moduleId;
+        return (
+          normalizedId === directStandaloneAppPath.replaceAll("\\", "/") ||
+          normalizedId.includes("/node_modules/jazz-tools/") ||
+          normalizedId.includes("/node_modules/jazz-wasm/") ||
+          normalizedId.includes("/node_modules/.pnpm/jazz-tools@") ||
+          normalizedId.includes("/node_modules/.pnpm/jazz-wasm@")
+        );
+      });
+
+      if (forbiddenModules.length > 0) {
+        this.error(
+          `Production Inspector included forbidden direct-access modules:\n${forbiddenModules.join("\n")}`,
+        );
+      }
+    },
+  };
+}
+
 const sharedConfig = {
   ...jazzRuntimeConfig,
   resolve: {
@@ -109,6 +140,22 @@ const sharedConfig = {
 };
 
 export default defineConfig(({ mode }): UserConfig => {
+  if (mode === "production") {
+    return {
+      plugins: [failClosedProductionBuildPlugin(), react()],
+      resolve: {
+        alias: [{ find: /^\.\/App$/, replacement: productionStandaloneAppPath }],
+      },
+      base: "/",
+      publicDir: "public",
+      build: {
+        target: "esnext",
+        outDir: "dist",
+        emptyOutDir: true,
+      },
+    };
+  }
+
   const plugins = [inspectorBrowserTestRuntimePlugin(), ...createWasmPlugins(), react()];
 
   if (mode === "embedded") {
@@ -125,7 +172,7 @@ export default defineConfig(({ mode }): UserConfig => {
     };
   }
 
-  // The standalone "web" build (the default).
+  // Local dev and explicit direct builds retain the trusted direct-secret flow.
   return {
     ...sharedConfig,
     plugins,
@@ -133,7 +180,7 @@ export default defineConfig(({ mode }): UserConfig => {
     publicDir: "public",
     build: {
       target: "esnext",
-      outDir: "dist",
+      outDir: "dist-direct",
       emptyOutDir: true,
     },
   };

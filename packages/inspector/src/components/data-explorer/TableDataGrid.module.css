@@ -109,16 +109,38 @@
 
 .gridFrame {
   display: block;
-  height: 100%;
+  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
 }
 
 .contentArea {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   border-top: 1px solid var(--jz-border-strong);
   overflow: hidden;
+}
+
+.queryError,
+.copyStatus {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--jz-border-strong);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.queryError {
+  background: rgba(174, 54, 72, 0.14);
+  color: #f2bbc7;
+}
+
+.copyStatus {
+  background: rgba(56, 163, 165, 0.12);
+  color: #b7e2e3;
 }
 
 .dataGrid {
@@ -181,6 +203,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.writerDetailsButton {
+  max-inline-size: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  padding: 2px 4px;
+  font: inherit;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: copy;
+}
+
+.writerDetailsButton:hover {
+  background: var(--jz-surface);
+}
+
+.writerDetailsButton:focus-visible {
+  outline: 2px solid var(--jz-focus);
+  outline-offset: -2px;
 }
 
 .nullCellMarker {
@@ -285,6 +331,12 @@
   color: #e3ebf6;
 }
 
+.inlineNullButton:disabled {
+  color: #647186;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .inlineNullIcon {
   inline-size: 14px;
   block-size: 14px;
@@ -308,6 +360,11 @@
   margin: 0;
   cursor: pointer;
   transform: translateY(1px);
+}
+
+.booleanCellCheckbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .rowAdded :global(.rdg-cell) {
@@ -380,6 +437,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   inline-size: 100%;
   block-size: 100%;
 }
@@ -528,6 +586,80 @@
 
 .actionButton:focus-visible,
 .dangerActionButton:focus-visible {
+  outline: 2px solid var(--jz-focus);
+  outline-offset: 1px;
+}
+
+.actionButton:disabled,
+.dangerActionButton:disabled {
+  color: #596579;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.copyActionButton {
+  inline-size: 24px;
+  block-size: 24px;
+  color: #91a1b8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+}
+
+.confirmDialog {
+  inline-size: min(440px, calc(100vw - 32px));
+  border: 1px solid var(--jz-border-control);
+  border-radius: 8px;
+  background: var(--jz-bg);
+  color: var(--jz-ink);
+  padding: 0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.confirmDialog::backdrop {
+  background: rgba(3, 7, 12, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.confirmDialogPanel {
+  padding: 20px;
+}
+
+.confirmDialogTitle {
+  margin: 0;
+  color: var(--jz-ink-strong);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.confirmDialogDescription {
+  margin: 8px 0 0;
+  color: var(--jz-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.confirmDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.dangerButton {
+  border: 1px solid #793846;
+  border-radius: 4px;
+  background: #542631;
+  color: #f7dce2;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dangerButton:hover {
+  background: #65303c;
+}
+
+.dangerButton:focus-visible {
   outline: 2px solid var(--jz-focus);
   outline-offset: 1px;
 }

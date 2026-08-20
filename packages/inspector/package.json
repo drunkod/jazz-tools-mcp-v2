@@ -5,13 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && pnpm run build:web && pnpm run build:embedded",
-    "build:vercel": "tsc -b && pnpm run build:web",
-    "build:web": "vite build --mode web",
+    "typecheck": "tsc -b",
+    "build": "pnpm run typecheck && pnpm run build:direct && pnpm run build:embedded && pnpm run build:production",
+    "build:direct": "vite build --mode direct",
     "build:embedded": "vite build --mode embedded",
-    "preview": "vite preview",
+    "build:production": "vite build --mode production",
+    "build:vercel": "pnpm run typecheck && pnpm run build:production && pnpm run test:production-build",
+    "preview:production": "vite preview --outDir dist",
     "test": "vitest run --config vitest.config.ts",
-    "test:browser": "playwright test --config playwright.config.ts"
+    "test:production-build": "node --test tests/build/production-build.test.mjs",
+    "test:browser": "playwright test --config playwright.config.ts",
+    "test:browser:production": "pnpm run build:production && playwright test --config playwright.production.config.ts"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",

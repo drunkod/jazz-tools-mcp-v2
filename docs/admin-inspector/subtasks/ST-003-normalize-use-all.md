@@ -2,7 +2,7 @@
 
 Parent: Task 01
 Priority: P1
-Status: open follow-up
+Status: complete
 
 ## Problem
 
@@ -26,13 +26,15 @@ Supported inputs:
 
 ## Checklist
 
-- [ ] add `src/utility/normalize-use-all-result.ts`;
-- [ ] unit-test all three supported shapes;
-- [ ] preserve explicit `isLoading: false` for empty structured data;
-- [ ] preserve `error`;
-- [ ] replace duplicated casts in `TableDataGrid`;
-- [ ] replace duplicated casts in `RelationCell`;
-- [ ] document removal condition tied to the pinned Jazz version.
+- [x] add `src/utility/normalize-use-all-result.ts`;
+- [x] unit-test all three supported shapes;
+- [x] preserve explicit `isLoading: false` for empty structured data;
+- [x] preserve `error`;
+- [x] replace duplicated casts in `TableDataGrid`;
+- [x] replace duplicated casts in `RelationCell`;
+- [x] document removal condition tied to the pinned Jazz version.
+
+Removal condition: delete the adapter after the Inspector no longer supports the pinned `jazz-tools@2.0.0-alpha.53` array/`undefined` contract and its minimum Jazz version guarantees structured `{data,isLoading,error}` results.
 
 ## Acceptance
 

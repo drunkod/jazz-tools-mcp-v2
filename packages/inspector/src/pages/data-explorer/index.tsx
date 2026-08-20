@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
-import { NavLink, Outlet, useNavigate, useOutletContext, useParams } from "react-router";
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from "react-router";
 import { useDevtoolsContext } from "../../contexts/devtools-context.js";
+import { tableViewPath } from "../../utility/data-explorer-routes.js";
 import { useLocalStorageState } from "../../utility/use-local-storage-state.js";
 import styles from "./index.module.css";
 
@@ -10,7 +18,7 @@ const TABLES_SIDEBAR_DEFAULT_SIZE = 16;
 const TABLES_SIDEBAR_MIN_SIZE = 10;
 const TABLES_SIDEBAR_MAX_SIZE = 30;
 
-type TableView = "data" | "schema";
+type CopyViewStatus = "idle" | "copied" | "failed";
 
 interface DataExplorerOutletContext {
   isTablesPanelOpen: boolean;
@@ -21,9 +29,14 @@ interface TableNavigationItem {
   columnCount: number;
 }
 
-function tablePath(tableName: string, view: TableView): string {
-  return `/data-explorer/${encodeURIComponent(tableName)}/${view}`;
+function isEditableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])") !==
+      null
+  );
 }
+
 
 function isTablesSidebarSize(value: unknown): value is number {
   return (
@@ -69,6 +82,25 @@ function TableIcon() {
   );
 }
 
+function CopyIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6.25 5.25h5.5a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-5.5a1.5 1.5 0 0 1-1.5-1.5v-5a1.5 1.5 0 0 1 1.5-1.5Z" />
+      <path d="M10.75 5.25v-1a1.5 1.5 0 0 0-1.5-1.5h-5.5a1.5 1.5 0 0 0-1.5 1.5v5a1.5 1.5 0 0 0 1.5 1.5h1" />
+    </svg>
+  );
+}
+
 function SchemaIcon() {
   return (
     <svg
@@ -93,9 +125,20 @@ function SchemaIcon() {
 interface TablesSidebarProps {
   tables: TableNavigationItem[];
   selectedTableName?: string;
+  searchInputRef: RefObject<HTMLInputElement | null>;
+  copyViewStatus: CopyViewStatus;
+  onCopyViewLink: () => void;
+  showCopyViewLink: boolean;
 }
 
-function TablesSidebar({ tables, selectedTableName }: TablesSidebarProps) {
+function TablesSidebar({
+  tables,
+  selectedTableName,
+  searchInputRef,
+  copyViewStatus,
+  onCopyViewLink,
+  showCopyViewLink,
+}: TablesSidebarProps) {
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
   const visibleTables = useMemo(
@@ -122,6 +165,7 @@ function TablesSidebar({ tables, selectedTableName }: TablesSidebarProps) {
           <SearchIcon />
         </span>
         <input
+          ref={searchInputRef}
           className={styles.searchInput}
           aria-label="Search tables"
           placeholder="Search tables..."
@@ -153,7 +197,7 @@ function TablesSidebar({ tables, selectedTableName }: TablesSidebarProps) {
               <li key={table.name} className={styles.tableListItem}>
                 <div className={`${styles.tableRow} ${isSelected ? styles.tableRowActive : ""}`}>
                   <NavLink
-                    to={tablePath(table.name, "data")}
+                    to={tableViewPath(table.name, "data")}
                     className={styles.tableLink}
                     aria-label={`View ${table.name} data`}
                   >
@@ -169,7 +213,7 @@ function TablesSidebar({ tables, selectedTableName }: TablesSidebarProps) {
                     </span>
                   </NavLink>
                   <NavLink
-                    to={tablePath(table.name, "schema")}
+                    to={tableViewPath(table.name, "schema")}
                     className={({ isActive }) =>
                       `${styles.schemaLink} ${isActive ? styles.schemaLinkActive : ""}`
                     }
@@ -192,19 +236,39 @@ function TablesSidebar({ tables, selectedTableName }: TablesSidebarProps) {
 
       <div className={styles.sidebarFooter}>
         <span className={styles.realtimeDot} aria-hidden="true" />
-        <span>Reactive table data</span>
-        <span className={styles.realtimeState}>Jazz</span>
+        <span className={styles.realtimeLabel}>Reactive table data</span>
+        {showCopyViewLink ? (
+          <button
+            type="button"
+            className={styles.copyViewButton}
+            aria-label="Copy view link"
+            title="Copy this filtered and sorted view"
+            onClick={onCopyViewLink}
+          >
+            <CopyIcon />
+            <span aria-live="polite">
+              {copyViewStatus === "copied"
+                ? "Copied"
+                : copyViewStatus === "failed"
+                  ? "Copy failed"
+                  : "Copy link"}
+            </span>
+          </button>
+        ) : null}
       </div>
     </aside>
   );
 }
 
 export function DataExplorer() {
-  const { wasmSchema: schema } = useDevtoolsContext();
+  const { wasmSchema: schema, runtime } = useDevtoolsContext();
   const isTablesPanelOpen =
     useOutletContext<DataExplorerOutletContext | null>()?.isTablesPanelOpen ?? true;
   const { table } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [copyViewStatus, setCopyViewStatus] = useState<CopyViewStatus>("idle");
 
   const tables = useMemo<TableNavigationItem[]>(
     () =>
@@ -223,9 +287,56 @@ export function DataExplorer() {
   useEffect(() => {
     if (tableNames.length === 0) return;
     if (!table || !tableNames.includes(table)) {
-      navigate(tablePath(tableNames[0], "data"), { replace: true });
+      navigate(tableViewPath(tableNames[0], "data"), { replace: true });
     }
   }, [table, tableNames, navigate]);
+
+  useEffect(() => {
+    setCopyViewStatus("idle");
+  }, [location.key]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key !== "/" ||
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isEditableTarget(event.target)
+      ) {
+        return;
+      }
+
+      const searchInput = searchInputRef.current;
+      if (!searchInput) {
+        return;
+      }
+
+      event.preventDefault();
+      searchInput.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const copyViewLink = async () => {
+    const viewUrl = new URL(
+      `${location.pathname}${location.search}${location.hash}`,
+      window.location.origin,
+    ).toString();
+
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API unavailable");
+      }
+      await navigator.clipboard.writeText(viewUrl);
+      setCopyViewStatus("copied");
+    } catch {
+      setCopyViewStatus("failed");
+    }
+  };
 
   const [tablesSidebarSize, setTablesSidebarSize] = useLocalStorageState(
     TABLES_SIDEBAR_SIZE_STORAGE_KEY,
@@ -254,7 +365,14 @@ export function DataExplorer() {
             minSize={`${TABLES_SIDEBAR_MIN_SIZE}%`}
             maxSize={`${TABLES_SIDEBAR_MAX_SIZE}%`}
           >
-            <TablesSidebar tables={tables} selectedTableName={table} />
+            <TablesSidebar
+              tables={tables}
+              selectedTableName={table}
+              searchInputRef={searchInputRef}
+              copyViewStatus={copyViewStatus}
+              onCopyViewLink={() => void copyViewLink()}
+              showCopyViewLink={runtime === "standalone"}
+            />
           </Panel>
           <Separator className={styles.resizeHandle} />
         </>
@@ -266,13 +384,15 @@ export function DataExplorer() {
         minSize={isTablesPanelOpen ? "40%" : "100%"}
       >
         <main className={styles.content}>
-          {!table && tableNames.length === 0 ? (
-            <section className={styles.emptyState}>
-              <h3 className={styles.emptyTitle}>No tables</h3>
-              <p className={styles.emptyText}>This schema doesn’t define any tables yet.</p>
-            </section>
-          ) : null}
-          <Outlet />
+          <div className={styles.routeContent}>
+            {!table && tableNames.length === 0 ? (
+              <section className={styles.emptyState}>
+                <h3 className={styles.emptyTitle}>No tables</h3>
+                <p className={styles.emptyText}>This schema doesn’t define any tables yet.</p>
+              </section>
+            ) : null}
+            <Outlet />
+          </div>
         </main>
       </Panel>
     </Group>
