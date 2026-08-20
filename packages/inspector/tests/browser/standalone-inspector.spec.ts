@@ -58,8 +58,10 @@ async function openTodosTable(page: Page) {
   const tableLink = page.getByRole("link", { name: "View todos data" });
   await expect(tableLink).toBeVisible({ timeout: 5_000 });
   await tableLink.click();
-  await page.getByRole("columnheader", { name: "title" }).click();
 
+  // Keep the default ID order. Seed IDs are insertion ordered, so the named
+  // fixtures are already on page one; sorting all 1,500 rows by title here adds
+  // avoidable startup work and can delay the first subscription in CI.
   await expectTodosTableLoaded(page);
 }
 
