@@ -1,7 +1,7 @@
 # Task 05 — Production security boundary
 
 Priority: P0 before internet-exposed production use
-Status: fail-closed production artifact and contract complete; trusted BFF runtime not implemented; functional production acceptance unmet
+Status: policy-independent BFF core implemented with fail-closed defaults; approved policy adapters and functional production acceptance remain unmet
 Contract: [`../security-boundary.md`](../security-boundary.md)
 
 ## Goal
@@ -24,24 +24,24 @@ Replace browser possession of privileged Jazz admin credentials with a trusted s
 - [ ] Backend constructs or leases the privileged Jazz client from an allowlisted connection.
 - [x] Deployable production browser artifact is proven to exclude direct Jazz modules, remove legacy secret state, and make no privileged network requests.
 
-The deployable/Vercel artifact fails closed and contains no functional Inspector until a trusted BFF exists. The unchecked items are implementation/verification work, not documentation ambiguity. The separate `dev`/`build:direct` admin-secret flow is development/operator tooling and is not accepted for internet-exposed production use.
+The deployable/Vercel artifact fails closed and contains no functional Inspector until the trusted BFF is connected to approved policy adapters. The policy-independent core now exists under `src/bff/`, but its default identity, authorization, elevation, and audit wiring remain fail-closed. The separate `dev`/`build:direct` admin-secret flow is development/operator tooling and is not accepted for internet-exposed production use.
 
 ### T05.3 Auditability
 - [x] Define a versioned server-side audit event with operator, request, environment/app/schema/table/row identifiers, action, decision, outcome, reason, elevation, counts, and duration.
 - [x] Prohibit logging credentials, session/CSRF/IdP tokens, mutation payloads, query results, and sensitive values by default.
-- [ ] Implement append-only audit emission and failure-path coverage.
-- [ ] Approve and configure deployment-specific retention, audit-reader access, row-ID/IP classification, legal hold, and monitoring policy.
+- [x] Implement server-side audit emission hooks, default redaction, sanitized errors, and failure-path coverage.
+- [ ] Configure the approved durable append-only audit sink, retention, access, classification, legal hold, and monitoring policy.
 
 ### T05.4 Least privilege
 - [x] Contract separates `schema:read`, `data:read`, and `data:mutate` capabilities.
 - [x] Contract requires a short-lived operator/session/connection-bound elevation for production mutation.
-- [ ] Implement deny-by-default capability checks and prove read-only operators cannot mutate.
+- [x] Implement deny-by-default capability checks and prove read-only operators cannot mutate in the adapter/router tests.
 - [ ] Integrate the approved identity-provider re-authentication/elevation mechanism.
 
 ## Acceptance
 
 No production-facing browser bundle stores, receives, or reconstructs a raw Jazz `adminSecret` or `backendSecret`.
 
-**Current functional result: not accepted.** No trusted Admin Inspector BFF exists in this repository. The production artifact is safely unavailable and excludes the direct Jazz graph; only explicit local/operator direct mode accepts/stores `adminSecret`. Production Admin Inspector functionality remains disabled until the runtime acceptance gate in [`../security-boundary.md`](../security-boundary.md) is implemented and evidenced.
+**Current functional result: not accepted.** The policy-independent BFF core exists and is covered by fail-closed/router and in-memory Jazz tests, while the production artifact remains safely unavailable and excludes the direct Jazz graph. Only explicit local/operator direct mode accepts/stores `adminSecret`. Production Admin Inspector functionality remains disabled until the approved policy adapters and runtime acceptance gate in [`../security-boundary.md`](../security-boundary.md) are implemented and evidenced.
 
-Only identity provider/role mapping, session/elevation lifetimes, audit retention/classification, deployment topology, and mutation atomicity/idempotency/limit choices are policy-dependent. The BFF implementation is pending rather than broadly “blocked”; policy-independent server-only secret handling, validation, redaction, audit hooks, and fail-closed tests can proceed.
+Only identity provider/role mapping, session/elevation lifetimes, audit retention/classification, deployment topology, and mutation atomicity/idempotency/limit choices are policy-dependent. The policy-independent BFF core is implemented; the approved production adapters and runtime evidence remain pending rather than broadly “blocked”.

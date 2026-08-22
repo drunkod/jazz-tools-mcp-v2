@@ -12,7 +12,8 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "npm run build && node --test dist/*.test.js"
+    "test": "npm run build && node --test dist/*.test.js dist/bff/*.test.js",
+    "test:bff": "npm run build && node --test dist/bff/*.test.js"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",

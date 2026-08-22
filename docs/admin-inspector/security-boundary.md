@@ -1,6 +1,6 @@
 # Production security boundary
 
-Status: fail-closed deployable artifact and contract complete; trusted BFF not implemented
+Status: fail-closed deployable artifact, contract, and policy-independent BFF core implemented; production acceptance unmet
 Owner: platform/security + Admin Inspector
 Production exposure: prohibited until the runtime acceptance gate below passes
 
@@ -268,9 +268,9 @@ The technical boundary and API contract above are decided. Implementation needs 
 5. approved production topology (dedicated BFF preferred versus demonstrated equivalent isolation);
 6. mutation batch atomicity/idempotency policy and maximum query/mutation limits.
 
-The BFF implementation itself is **pending**, not described as policy-blocked. Work that does not depend on the choices above—same-origin routing, server-only secret resolution, request validation, deny-by-default authorization hooks, redaction, audit event emission, and tests—can proceed now.
+The policy-independent BFF core is implemented in `src/bff/`: same-origin `/api/admin/v1` routing, server-only connection-registry resolution, strict bounded validation, deny-by-default identity/authorization/elevation ports, redacting audit sink, sanitized error envelopes, and unit/in-memory Jazz integration tests. The default server wiring remains fail-closed. The approved identity provider, role mapping, lifetimes, durable audit sink, deployment topology, and mutation policy still require product/security decisions and adapter implementations.
 
-Immediate mitigation is implemented in `ProductionApp.tsx`, the production-mode Vite graph guard, production artifact test, and production Playwright test. CI builds/tests direct, embedded, and fail-closed production artifacts separately.
+Immediate mitigation is implemented in `ProductionApp.tsx`, the production-mode Vite graph guard, production artifact test, and production Playwright test. CI builds/tests the BFF core separately and continues to build/test direct, embedded, and fail-closed production artifacts separately. This core implementation does not change the fail-closed production Inspector artifact or claim that the runtime acceptance gate is met.
 
 ## Runtime acceptance gate
 

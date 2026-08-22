@@ -2,7 +2,7 @@
 
 Parent: Task 05
 Priority: P0 before production exposure
-Status: fail-closed production artifact and API/session/audit design complete; trusted BFF implementation pending
+Status: policy-independent BFF core implemented with fail-closed defaults; approved policy adapters and runtime acceptance pending
 Contract: [`../security-boundary.md`](../security-boundary.md)
 
 ## Target topology
@@ -38,16 +38,27 @@ Jazz sync server
 - [x] production browser test proves no credential UI or privileged network traffic;
 - [x] CI builds/tests direct, embedded, and production artifacts separately.
 
+## Policy-independent core implemented
+
+- [x] `src/bff/router.ts` mounts the `/api/admin/v1` session, connection, schema, query, mutation, and elevation handlers.
+- [x] `src/bff/connection-registry.ts` resolves opaque connection IDs to server-only secret-bearing connector configs.
+- [x] `src/bff/schemas.ts` enforces strict bounded envelopes and rejects `id`/`$` mutation fields.
+- [x] `src/bff/ports.ts` supplies pluggable identity, authorization, elevation, and audit seams with deny-by-default implementations.
+- [x] `src/bff/redaction.ts` allowlists audit fields and removes tokens, payloads, and row IDs by default.
+- [x] Router tests cover unauthenticated/CSRF/authorization/stale-schema/least-privilege/secret non-leakage paths.
+- [x] In-memory Jazz integration covers BFF insert/update/delete and generated row-ID reuse.
+- [x] The root CI workflow runs a separate `bff` job; the production Inspector fail-closed guard remains unchanged.
+
 ## Runtime requirements still pending
 
-- [ ] production admin/backend secret exists only in server-side secret storage;
+- [ ] production admin/backend secret exists only in the approved production secret manager and is wired to the deployed service;
 - [ ] browser authenticates using the approved operator identity/session implementation;
-- [ ] backend authorizes environment/table/action on every request;
-- [ ] read-only and mutation roles are enforced and tested;
-- [ ] mutation attempts/outcomes are emitted to the approved audit sink;
+- [ ] approved backend authorizes environment/table/action on every production request;
+- [ ] read-only and mutation roles are enforced by the approved role mapping;
+- [ ] mutation attempts/outcomes reach the approved durable append-only audit sink;
 - [ ] browser bundle/storage/responses/telemetry/logs are proven free of raw privileged secrets;
-- [ ] logs redact credentials, tokens, query results, and sensitive row payloads by default;
-- [ ] CSRF/session/elevation protections are implemented and fail-closed;
+- [ ] approved audit storage redacts credentials, tokens, query results, and sensitive row payloads by default;
+- [ ] production deployment topology, session/elevation lifetimes, and mutation limits/idempotency are approved and enforced;
 - [ ] production mutation sessions require a valid short-lived elevation.
 
 ## Non-solutions
@@ -65,4 +76,4 @@ Only the identity provider and role mapping, session/elevation lifetimes, audit 
 
 Compromising the static frontend bundle alone does not reveal a privileged Jazz admin/backend credential, and a browser cannot perform privileged Jazz operations except through an authenticated, authorized, audited BFF request.
 
-**Current result: not accepted.** The standalone Inspector still supports direct browser `adminSecret` configuration and no trusted BFF is implemented in this repository. Do not describe browser-secret handling as production-complete.
+**Current result: not accepted.** The policy-independent BFF core is implemented, but the standalone Inspector still supports direct browser `adminSecret` configuration in explicit development/direct builds, and the approved production identity, authorization, elevation, audit, and deployment adapters are not configured. Do not describe browser-secret handling or production Admin Inspector functionality as complete.
