@@ -224,9 +224,26 @@ Use a second unique title, for example `Inspector reverse demo 2026-08-17T18:05:
 - New MCP `jazz_query`/`jazz_get_row` calls are observations, not browser refreshes.
 - The forward UI must react through Jazz subscriptions; mocked network responses or polling the page do not pass.
 
-## Acceptance record
+## Automated transport evidence
 
-Record:
+The root integration suite includes `src/mcp-transport.integration.test.ts`. It starts an in-memory official Jazz server, deploys the `todos` schema, spawns the compiled `dist/index.js` process, and communicates only through newline-delimited MCP stdio JSON-RPC. The test:
+
+1. initializes the MCP session and lists the exact registered tools;
+2. performs `jazz_insert` → `jazz_update` → `jazz_get_row` → `jazz_delete` with the returned `row.id`;
+3. writes through an independent Jazz connector and polls `jazz_query`/`jazz_get_row` through the same MCP child until insert/update/delete are observed;
+4. stops the child and Jazz resources deterministically.
+
+Run it through the required root gate:
+
+```sh
+npm test
+```
+
+The transport test complements, rather than replaces, `packages/inspector/tests/browser/standalone-inspector.spec.ts`, which proves the open Inspector reacts to independent Jazz writes without refresh.
+
+## Manual acceptance record
+
+For an operator-facing demonstration, record:
 
 - Jazz server command and resolved `jazz-tools` version;
 - connector build/start command and `jazz_status` output with secrets redacted;

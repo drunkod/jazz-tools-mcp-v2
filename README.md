@@ -234,13 +234,15 @@ npm test
 npm run build
 ```
 
-Tests include an integration smoke test using the official Jazz testing utilities to:
+Tests include integration coverage using the official Jazz testing utilities to:
 
-1. start an in-memory Jazz server
-2. deploy a real schema and permissions bundle
-3. connect this MCP adapter without passing the backend secret
-4. discover the published schema through the admin catalogue
-5. insert/query/update/delete through Jazz's native runtime and WebSocket protocol
+1. start an in-memory Jazz server;
+2. deploy a real schema and permissions bundle;
+3. connect the connector without passing the backend secret;
+4. discover the published schema through the admin catalogue;
+5. insert/query/update/delete through Jazz's native runtime and WebSocket protocol;
+6. spawn the compiled `dist/index.js` executable and negotiate MCP over stdio JSON-RPC;
+7. verify exact tool registration, returned-ID forward CRUD, and reverse external-writer visibility without restarting the MCP process.
 
 For a manual server test, see [`docs/testing.md`](docs/testing.md).
 

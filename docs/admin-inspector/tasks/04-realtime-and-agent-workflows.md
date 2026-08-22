@@ -2,7 +2,7 @@
 
 Priority: P1 acceptance / P2 observability
 Dependency: Task 00
-Status: two-writer and provenance UI complete; MCP runbook ready; manual MCP transport acceptance pending
+Status: complete; browser realtime and executable MCP transport acceptance are CI-gated
 
 ## Goal
 
@@ -44,9 +44,16 @@ Animation scope includes the table, compiled query, and visible-column set, so a
 - [x] Exact connector startup and registered tool names.
 - [x] Insert/update/delete mutation sequence.
 - [x] Use `jazz_insert`'s returned `row.id` and reverse-flow `jazz_query`'s returned `rows[0].id`; never hard-code row IDs.
-- [ ] Confirm forward and reverse MCP transport flow without refresh (runbook is complete; executable transport evidence is pending).
+- [x] Confirm forward and reverse MCP transport flow without restarting the MCP process.
 
-Canonical runbook: [`../snippets/mcp-realtime-demo.md`](../snippets/mcp-realtime-demo.md). It documents exact inputs and return shapes for `jazz_status`, `jazz_list_tables`, `jazz_insert`, `jazz_update`, `jazz_delete`, `jazz_query`, and `jazz_get_row`. The two-writer browser gate proves the Jazz client path; a checked-in MCP transport test or recorded manual run is still required before marking the final MCP checkbox.
+Canonical runbook: [`../snippets/mcp-realtime-demo.md`](../snippets/mcp-realtime-demo.md). It documents exact inputs and return shapes for `jazz_status`, `jazz_list_tables`, `jazz_insert`, `jazz_update`, `jazz_delete`, `jazz_query`, and `jazz_get_row`.
+
+Executable evidence is split at the real system boundaries:
+
+- `src/mcp-transport.integration.test.ts` spawns `dist/index.js`, negotiates MCP over newline-delimited stdio JSON-RPC, verifies registered tools, performs returned-ID forward CRUD, and observes reverse insert/update/delete from an independent Jazz writer through the same running MCP child process;
+- `packages/inspector/tests/browser/standalone-inspector.spec.ts` proves an open Inspector reacts to independent Jazz insert/update/delete and provenance changes without browser refresh.
+
+Both run in required CI jobs. Together they prove the transport and reactive UI paths without replacing either boundary with mocks.
 
 ## Acceptance
 
@@ -55,4 +62,4 @@ agent/client -> Jazz -> Inspector
 Inspector -> Jazz -> agent/client
 ```
 
-Automated acceptance covers an independent Jazz client/backend writer flowing into Inspector with insert/update/delete and provenance change, without refresh. The canonical MCP runbook covers the named root connector in both directions, but its manual/transport execution is intentionally not claimed as completed. Animation scope reset, reduced motion, and exact writer-ID inspection/copy are implemented and covered by component or browser evidence.
+Automated acceptance covers the executable MCP stdio transport in both mutation directions without restarting the child process, plus an independent Jazz writer flowing into the open Inspector with insert/update/delete and provenance change without browser refresh. The manual runbook remains the operator-facing demonstration. Animation scope reset, reduced motion, and exact writer-ID inspection/copy are implemented and covered by component or browser evidence.
