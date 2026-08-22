@@ -73,7 +73,7 @@ docs/admin-inspector/
 
 ## Task 04–06 status
 
-- **Task 04:** the required independent two-writer browser test verifies insert/update/delete and rendered `$updatedAt` changes; animation-scope reset, reduced motion, and exact raw writer-ID copy affordances are implemented. The exact forward/reverse MCP runbook is [`snippets/mcp-realtime-demo.md`](snippets/mcp-realtime-demo.md); executable/manual MCP transport evidence remains pending.
+- **Task 04:** complete. The required independent two-writer browser test verifies Inspector insert/update/delete reactivity and rendered `$updatedAt` changes; the root stdio integration test exercises the compiled MCP executable, exact tools, returned IDs, and forward/reverse Jazz mutations without process restart. The operator runbook remains [`snippets/mcp-realtime-demo.md`](snippets/mcp-realtime-demo.md).
 - **Task 05:** the threat model and concrete BFF/session/mutation/audit contract are in [`security-boundary.md`](security-boundary.md). The deployable/Vercel artifact now fails closed and statically excludes direct Jazz access, while `dev`/`build:direct` remain explicitly privileged local/operator tools. A functional authenticated BFF is still not implemented, so production Admin Inspector functionality remains disabled rather than falsely accepted.
 - **Task 06:** immutable Jazz source/package coordinates, attribution, comparison commands, upgrade checklist, and WhoDB reference discipline are in [`upstream-sync-baseline.md`](upstream-sync-baseline.md).
 
